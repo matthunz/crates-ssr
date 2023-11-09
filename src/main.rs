@@ -47,7 +47,7 @@ enum State {
 
 #[component]
 fn Home(cx: Scope) -> Element {
-    render!( h1 { "Crates" } )
+    render!( h4 { "Home" } )
 }
 
 #[server(PostServerData)]

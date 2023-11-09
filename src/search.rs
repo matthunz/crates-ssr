@@ -11,7 +11,6 @@ pub fn Search(cx: Scope, query: Query) -> Element {
 
     use_effect(cx, &query.q, |q| async move {
         data.set(None);
-
         let res = api::get_crates(1, 10, &q).await;
         data.set(Some(res));
     });

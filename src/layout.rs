@@ -35,26 +35,35 @@ fn SearchBar(cx: Scope) -> Element {
 
     if let State::Ready { q } = &*state() {
         render!(
-            form { onsubmit: move |_| {
-                    if let State::Ready { q, .. } = &*state() {
-                        navigator
-                            .push(Route::Search {
-                                query: Query {
-                                    q: q.clone().unwrap_or_default(),
-                                },
-                            });
-                    }
-                },
-                input {
-                    r#type: "text",
-                    value: "{q.as_deref().unwrap_or_default()}",
-                    onchange: move |event| {
-                        let mut state_ref = state.write();
-                        if let State::Ready { q: _ } = &mut *state_ref {
-                            *state_ref = State::Ready {
-                                q: Some(event.value.clone()),
-                            };
+            div { class: "header",
+                Link { to: Route::Home {  }, "Crates" }
+                form {
+                    class: "search",
+                    onsubmit: move |_| {
+                        if let State::Ready { q, .. } = &*state() {
+                            navigator
+                                .push(Route::Search {
+                                    query: Query {
+                                        q: q.clone().unwrap_or_default(),
+                                    },
+                                });
                         }
+                    },
+                    input {
+                        r#type: "text",
+                        value: "{q.as_deref().unwrap_or_default()}",
+                        onchange: move |event| {
+                            let mut state_ref = state.write();
+                            if let State::Ready { q: _ } = &mut *state_ref {
+                                *state_ref = State::Ready {
+                                    q: Some(event.value.clone()),
+                                };
+                            }
+                        }
+                    }
+                    input {
+                        r#type: "submit",
+                        value: "Search"
                     }
                 }
             }
