@@ -1,0 +1,22 @@
+[package]
+name = "crates"
+version = "0.1.0"
+authors = ["Matt Hunzinger <matthunz2@gmail.com>"]
+edition = "2021"
+
+[dependencies]
+dioxus = { git = "https://github.com/dioxuslabs/dioxus" }
+dioxus-fullstack = { git = "https://github.com/dioxuslabs/dioxus", features = ["router"] }
+dioxus-signals = { git = "https://github.com/dioxuslabs/dioxus" }
+dioxus-router = { git = "https://github.com/dioxuslabs/dioxus" }
+serde = { version = "1.0.159", features = ["derive"] }
+
+# Debug
+log = "0.4.19"
+dioxus-logger = "0.4.1"
+
+[features]
+default = []
+ssr = ["dioxus-fullstack/axum"]
+web = ["dioxus-router/web", "dioxus-fullstack/web"]
+
