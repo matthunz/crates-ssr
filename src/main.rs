@@ -1,9 +1,15 @@
+use std::rc::Rc;
+
+use api::CrateItemData;
 use dioxus::prelude::*;
 use dioxus_fullstack::prelude::*;
 use dioxus_router::prelude::*;
 use dioxus_signals::{use_signal, Signal};
 use log::LevelFilter;
+use reqwest::Error;
 use serde::{Deserialize, Serialize};
+
+mod api;
 
 fn main() {
     // Init debug
@@ -34,38 +40,87 @@ fn Blog(cx: Scope, id: i32) -> Element {
     }
 }
 
+#[derive(Clone)]
+enum ReadyState {
+    Fetching,
+    Result(Result<Vec<CrateItemData>, Rc<Error>>),
+}
+
+enum State {
+    Loading,
+    Ready {
+        query: String,
+        state: Option<ReadyState>,
+    },
+}
+
 #[inline_props]
 fn Home(cx: Scope) -> Element {
-    let mut count = use_state(cx, || 0);
+    let state = use_signal(cx, || State::Loading);
 
-    let query = use_state(cx, || String::new());
-    let crates: Signal<Option<Vec<CrateItemData>>> = use_signal(cx, || None);
+    let query = use_signal(cx, || String::new());
 
-    let crates_list = if let Some(crates) = &*crates() {
-        log::info!("WAT");
-        let elems = crates.iter().map(|krate| render!( div { "{krate.name}" } ));
-        render!(elems)
-    } else {
-        render!( div { "Loading..." } )
-    };
+    use_effect(cx, (), move |_| async move {
+        state.set(State::Ready {
+            query: String::new(),
+            state: None,
+        })
+    });
 
-    cx.render(rsx! {
-        div {
-            onmounted: |_| {
-                log::info!("loaded");
-            }
-        }
-        form { onsubmit: move |_| {
-                log::info!("here");
-                async move {
-                    let data = get_server_data().await.unwrap();
-                    crates.set(Some(data));
+    let state_ref = &*state.read();
+    match state_ref {
+        State::Loading => cx.render(rsx!( div { "Loading..." } )),
+        State::Ready {
+            query,
+            state: ready_state,
+        } => {
+            let content = match &ready_state {
+                Some(ReadyState::Result(Ok(crates))) => {
+                    let elems = crates
+                        .iter()
+                        .map(|krate| cx.render(rsx!( div { "{krate.name}" } )));
+                    cx.render(rsx! {
+                        ul { elems }
+                    })
                 }
-            },
-            input { onchange: |event| query.set(event.value.clone()) }
+                Some(ReadyState::Result(Err(_))) => cx.render(rsx!( div { "Error" } )),
+                Some(ReadyState::Fetching) => cx.render(rsx!( div { "Fetching" } )),
+                None => cx.render(rsx!( div { "Search" } )),
+            };
+
+            let ready_state = ready_state.clone();
+            let query = query.clone();
+
+            render!(
+                form {
+                    onsubmit: move |_| {
+                        let query = query.clone();
+                        state
+                            .set(State::Ready {
+                                query: query.clone(),
+                                state: Some(ReadyState::Fetching),
+                            });
+                        async move {
+                            let res = api::get_crates(1, 10, &query).await.map_err(Rc::new);
+                            state
+                                .set(State::Ready {
+                                    query: query.clone(),
+                                    state: Some(ReadyState::Result(res)),
+                                })
+                        }
+                    },
+                    input { onchange: move |event| {
+                            state
+                                .set(State::Ready {
+                                    query: event.value.clone(),
+                                    state: ready_state.clone(),
+                                })
+                        } }
+                }
+                content
+            )
         }
-        crates_list
-    })
+    }
 }
 
 #[server(PostServerData)]
@@ -73,28 +128,4 @@ async fn post_server_data(data: String) -> Result<(), ServerFnError> {
     println!("Server received: {}", data);
 
     Ok(())
-}
-
-#[derive(Deserialize, Serialize)]
-pub struct CrateItemData {
-    pub name: String,
-    pub description: Option<String>,
-    pub newest_version: String,
-    pub downloads: u32,
-    pub recent_downloads: u32,
-    pub updated_at: String,
-}
-
-#[server(GetServerData)]
-async fn get_server_data() -> Result<Vec<CrateItemData>, ServerFnError> {
-    Ok(vec![
-        CrateItemData {
-            name: String::from("dioxus"),
-            description: Some(String::from("Da bomb")),
-            newest_version: String::from("v1.0.0"),
-            downloads: 100,
-            recent_downloads: 20,
-            updated_at: String::from("4h")
-        }
-    ])
 }

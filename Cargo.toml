@@ -10,8 +10,8 @@ dioxus-fullstack = { git = "https://github.com/dioxuslabs/dioxus", features = ["
 dioxus-signals = { git = "https://github.com/dioxuslabs/dioxus" }
 dioxus-router = { git = "https://github.com/dioxuslabs/dioxus" }
 serde = { version = "1.0.159", features = ["derive"] }
+reqwest = { version = "0.11.22", features = ["json"] }
 
-# Debug
 log = "0.4.19"
 dioxus-logger = "0.4.1"
 
